@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset=utf-8 http-equiv="Content-Language" content="en"/>
+ <title>Minimal Websocket test app</title>
+<style type="text/css">
+	span.title { font-size:18pt; font: Arial; font-weight:normal; text-align:center; color:#000000; }
+	.browser { font-size:18pt; font: Arial; font-weight:normal; text-align:center; color:#ffff00; vertical-align:middle; text-align:center; background:#d0b070; padding:12px; -webkit-border-radius:10px; -moz-border-radius:10px; border-radius:10px;}
+	.group2 { vertical-align:middle;
+		text-align:center;
+		background:#f0f0e0; 
+		padding:12px; 
+		-webkit-border-radius:10px; 
+		-moz-border-radius:10px;
+		border-radius:10px; }
+	.explain { vertical-align:middle;
+		text-align:center;
+		background:#f0f0c0; padding:12px;
+		-webkit-border-radius:10px;
+		-moz-border-radius:10px;
+		border-radius:10px;
+		color:#404000; }
+	td.wsstatus { vertical-align:middle; width:200px; height:50px;
+		text-align:center;
+		background:#f0f0c0; padding:6px;
+		-webkit-border-radius:8px;
+		-moz-border-radius:8px;
+		border-radius:8px;
+		color:#404000; }
+	td.l { vertical-align:middle;
+		text-align:center;
+		background:#d0d0b0; 
+		padding:3px; 
+		-webkit-border-radius:3px; 
+		-moz-border-radius:3px;
+		border-radius:3px; }
+	.content { vertical-align:top; text-align:center; background:#fffff0; padding:12px; -webkit-border-radius:10px; -moz-border-radius:10px; border-radius:10px; }
+	.canvas { vertical-align:top; text-align:center; background:#efefd0; padding:12px; -webkit-border-radius:10px; -moz-border-radius:10px; border-radius:10px; }
+.tabs {
+  position: relative;   
+  min-height: 750px; /* This part sucks */
+  clear: both;
+  margin: 25px 0;
+}
+.tab {
+  float: left;
+}
+.tab label {
+  background: #eee; 
+  padding: 10px; 
+  border: 1px solid #ccc; 
+  margin-left: -1px; 
+  position: relative;
+  left: 1px; 
+}
+.tab [type=radio] {
+  display: none;   
+}
+.content {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  background: white;
+  right: 0;
+  bottom: 0;
+  padding: 20px;
+  border: 1px solid #ccc; 
+}
+[type=radio]:checked ~ label {
+  background: white;
+  border-bottom: 1px solid white;
+  z-index: 2;
+}
+[type=radio]:checked ~ label ~ .content {
+  z-index: 1;
+}
+</style>
+</head>
+
+<body>
+<header></header>
+<article>
+
+<table><tr><td>
+
+<table width=600px>
+ <tr>
+  <td valign=middle align=center>
+   <a href="https://libwebsockets.org">
+    <img src="/libwebsockets.org-logo.png"></a></td><td>
+	<section class="browser">Detected Browser: 
+	<div id=brow>...</div></section>
+  </td>
+ </tr>
+
+</table>
+</td></tr>
+<tr><td colspan=2 align=center>
+Click <a href="/leaf.jpg" target="_blank">Here</a> to
+have the test server send a big picture by http.
+</td></tr>
+<tr><td colspan=2>
+<div class="tabs">
+
+   <div class="tab">
+       <input type="radio" id="tab-1" name="tab-group-1" checked>
+       <label for="tab-1">Dumb Increment Demo</label>
+       
+       <div class="content">
+        <div id="dumb" class="group2">
+         <table>
+          <tr>
+	   <td id=wsdi_statustd align=center class="wsstatus">
+	     <span id=wsdi_status>Websocket connection not initialized</span></td>
+           <td><span class="title">dumb increment-protocol</span></td>
+	   </tr>
+	   <tr>
+	   <td class="explain" colspan=2>
+The incrementing number is coming from the server at 20Hz and is individual for
+each connection to the server... try opening a second browser window.
+<br/><br/>
+The button sends a message over the websocket link to ask the server
+to zero just this connection's number.
+	   </td>
+	  </tr>
+	   <tr>
+	    <td align=center><div id=number style="font-size:120%;"> </div></td>
+	    <td align=center>
+	     <input type=button id=offset value="Reset counter" onclick="reset();" >
+	    </td>
+	    </tr>
+	 </table>
+	</div>
+       </div> 
+   </div>
+
+   <div class="tab">
+    <input type="radio" id="tab-2" name="tab-group-1">
+    <label for="tab-2">Mirror Demo</label>
+       
+    <div class="content">
+     <div id="mirror" class="group2">
+      <table>
+       <tr>
+	 <td colspan=1 id=wslm_statustd align=center class="wsstatus">
+	 <span id=wslm_status>Websocket connection not initialized</span>
+	</td>
+        <td>
+         <span class="title">lws-mirror-protocol</span>
+        </td>
+       </tr>
+       <tr>
+       <td colspan=2>
+         <div class="explain">
+Use the mouse to draw on the canvas below -- all other browser windows open
+on this page see your drawing in realtime and you can see any of theirs as
+well.
+<br/><br/>
+The lws-mirror protocol doesn't interpret what is being sent to it, it just
+re-sends it to every other websocket it has a connection with using that
+protocol, including the guy who sent the packet.
+<br/><br/>
+<b>libwebsockets-test-client</b> joins in by spamming circles on to this shared canvas when
+run.
+         </div>
+        </td>
+       </tr>
+       <tr>
+	<td colspan=2>Drawing color:
+	  <select id="color" onchange="update_color();">
+		<option value=#000000>Black</option>
+		<option value=#0000ff>Blue</option>
+		<option value=#20ff20>Green</option>
+		<option value=#802020>Dark Red</option>
+	  </select>
+       </tr>
+       <tr>
+	 <td colspan=2 width=500 height=320>
+		<div id="wslm_drawing" style="background:white"></div>
+	</td>
+       </tr>
+      </table>
+     </div>
+    </div> 
+   </div>
+    
+    <div class="tab">
+       <input type="radio" id="tab-3" name="tab-group-1">
+       <label for="tab-3">Close Testing</label>
+     
+       <div class="content">
+<div id="ot" class="group2">
+      <table>
+       <tr>
+        <td>
+
+		</td></tr>
+		<tr><td id=ot_statustd align=center class="wsstatus">
+		 <span id=ot_status>Websocket connection not initialized</span>
+		</td>
+		<td colspan=2><span class="title">Open and close testing</span></td>
+		</tr>
+		<tr>	
+<td class="explain" colspan=3 style="padding:3">
+To help with open and close testing, you can open and close a connection by hand using
+ the buttons.<br>
+ "<b>Close</b>" closes the connection from the browser with code 3000
+  and reason 'Bye!".<br>
+ "<b>Request Server Close</b>" sends a message asking the server to
+initiate the close, which it does with code 1001 and reason "Seeya".
+</td></tr>
+		<tr>
+		<td align=center><input type=button id=ot_open_btn value="Open" onclick="ot_open();" ></td>
+		<td align=center><input type=button id=ot_close_btn disabled value="Close" onclick="ot_close();" ></td>
+		<td align=center><input type=button id=ot_req_close_btn disabled value="Request Server Close" onclick="ot_req_close();" ></td>
+		</tr>
+
+</table>
+
+</div>
+       </div> 
+   </div>
+   
+    <div class="tab">
+       <input type="radio" id="tab-4" name="tab-group-1">
+       <label for="tab-4">Server info</label>
+
+       <div class="content">
+<div id="ot" class="group2">
+      <table>
+       <tr>
+	<td id=s_statustd align=center class="wsstatus">
+	 <div id=s_status>Websocket connection not initialized</div>
+	</td>
+	        <td colspan=1>
+<span class="title">Server Info</span>
+	</td>
+	</tr><tr>
+<td class="explain" colspan=2>
+This information is sent by the server over a ws[s] link and updated live
+whenever the information changes server-side.
+</td></tr>
+	<tr>
+	<td align=center colspan=2><div id=servinfo></</div></td>
+	</tr>
+	<tr>
+	<td align=center colspan=2><div id=conninfo style="border : solid 2px #e0d040; padding : 4px; width : 500px; height : 350px; overflow : auto; "></</div></td>
+	</tr>
+</table>
+</div>
+       </div> 
+   </div>
+
+</div>
+</td></tr></table>
+
+Looking for support? <a href="https://libwebsockets.org">https://libwebsockets.org</a>, <a href="https://github.com/warmcat/libwebsockets">https://github.com/warmcat/libwebsockets</a></a><br/>
+Join the mailing list: <a href="https://libwebsockets.org/mailman/listinfo/libwebsockets">https://libwebsockets.org/mailman/listinfo/libwebsockets</a>
+
+</article>
+
+<script>
+
+/*
+ * We display untrusted stuff in html context... reject anything
+ * that has HTML stuff in it
+ */
+
+function san(s)
+{
+	if (s.search("<") != -1)
+		return "invalid string";
+	
+	return s;
+}
+
+/* BrowserDetect came from http://www.quirksmode.org/js/detect.html */
+
+var BrowserDetect = {
+	init: function () {
+		this.browser = this.searchString(this.dataBrowser) || "An unknown browser";
+		this.version = this.searchVersion(navigator.userAgent)
+			|| this.searchVersion(navigator.appVersion)
+			|| "an unknown version";
+		this.OS = this.searchString(this.dataOS) || "an unknown OS";
+	},
+	searchString: function (data) {
+		for (var i=0;i<data.length;i++)	{
+			var dataString = data[i].string;
+			var dataProp = data[i].prop;
+			this.versionSearchString = data[i].versionSearch || data[i].identity;
+			if (dataString) {
+				if (dataString.indexOf(data[i].subString) != -1)
+					return data[i].identity;
+			}
+			else if (dataProp)
+				return data[i].identity;
+		}
+	},
+	searchVersion: function (dataString) {
+		var index = dataString.indexOf(this.versionSearchString);
+		if (index == -1) return;
+		return parseFloat(dataString.substring(index+this.versionSearchString.length+1));
+	},
+	dataBrowser: [
+		{
+			string: navigator.userAgent,
+			subString: "Chrome",
+			identity: "Chrome"
+		},
+		{ 	string: navigator.userAgent,
+			subString: "OmniWeb",
+			versionSearch: "OmniWeb/",
+			identity: "OmniWeb"
+		},
+		{
+			string: navigator.vendor,
+			subString: "Apple",
+			identity: "Safari",
+			versionSearch: "Version"
+		},
+		{
+			prop: window.opera,
+			identity: "Opera",
+			versionSearch: "Version"
+		},
+		{
+			string: navigator.vendor,
+			subString: "iCab",
+			identity: "iCab"
+		},
+		{
+			string: navigator.vendor,
+			subString: "KDE",
+			identity: "Konqueror"
+		},
+		{
+			string: navigator.userAgent,
+			subString: "Firefox",
+			identity: "Firefox"
+		},
+		{
+			string: navigator.vendor,
+			subString: "Camino",
+			identity: "Camino"
+		},
+		{		// for newer Netscapes (6+)
+			string: navigator.userAgent,
+			subString: "Netscape",
+			identity: "Netscape"
+		},
+		{
+			string: navigator.userAgent,
+			subString: "MSIE",
+			identity: "Explorer",
+			versionSearch: "MSIE"
+		},
+		{
+			string: navigator.userAgent,
+			subString: "Gecko",
+			identity: "Mozilla",
+			versionSearch: "rv"
+		},
+		{ 		// for older Netscapes (4-)
+			string: navigator.userAgent,
+			subString: "Mozilla",
+			identity: "Netscape",
+			versionSearch: "Mozilla"
+		}
+	],
+	dataOS : [
+		{
+			string: navigator.platform,
+			subString: "Win",
+			identity: "Windows"
+		},
+		{
+			string: navigator.platform,
+			subString: "Mac",
+			identity: "Mac"
+		},
+		{
+			   string: navigator.userAgent,
+			   subString: "iPhone",
+			   identity: "iPhone/iPod"
+	    },
+		{
+			string: navigator.platform,
+			subString: "Linux",
+			identity: "Linux"
+		}
+	]
+
+};
+BrowserDetect.init();
+
+document.getElementById("brow").textContent = " " + BrowserDetect.browser + " "
+	+ BrowserDetect.version +" " + BrowserDetect.OS +" ";
+
+	var pos = 0;
+
+function get_appropriate_ws_url()
+{
+	var pcol;
+	var u = document.URL;
+
+	/*
+	 * We open the websocket encrypted if this page came on an
+	 * https:// url itself, otherwise unencrypted
+	 */
+
+	if (u.substring(0, 5) == "https") {
+		pcol = "wss://";
+		u = u.substr(8);
+	} else {
+		pcol = "ws://";
+		if (u.substring(0, 4) == "http")
+			u = u.substr(7);
+	}
+
+	u = u.split('/');
+
+	/* + "/xxx" bit is for IE10 workaround */
+
+	return pcol + u[0] + "/xxx";
+}
+
+
+document.getElementById("number").textContent = get_appropriate_ws_url();
+
+/* dumb increment protocol */
+	
+	var socket_di;
+
+	if (typeof MozWebSocket != "undefined") {
+		socket_di = new MozWebSocket(get_appropriate_ws_url(),
+				   "dumb-increment-protocol");
+	} else {
+		socket_di = new WebSocket(get_appropriate_ws_url(),
+				   "dumb-increment-protocol");
+	}
+
+
+	try {
+		socket_di.onopen = function() {
+			document.getElementById("wsdi_statustd").style.backgroundColor = "#40ff40";
+			document.getElementById("wsdi_status").innerHTML =
+				" <b>websocket connection opened</b><br>" +
+				san(socket_di.extensions);
+		} 
+
+		socket_di.onmessage =function got_packet(msg) {
+			document.getElementById("number").textContent = msg.data + "\n";
+		} 
+
+		socket_di.onclose = function(){
+			document.getElementById("wsdi_statustd").style.backgroundColor = "#ff4040";
+			document.getElementById("wsdi_status").textContent = " websocket connection CLOSED ";
+		}
+	} catch(exception) {
+		alert('<p>Error' + exception);  
+	}
+	
+	var socket_status, jso, s;
+
+	if (typeof MozWebSocket != "undefined") {
+		socket_status = new MozWebSocket(get_appropriate_ws_url(),
+				   "lws-status");
+	} else {
+		socket_status = new WebSocket(get_appropriate_ws_url(),
+				   "lws-status");
+	}
+
+
+	try {
+		socket_status.onopen = function() {
+			document.getElementById("s_statustd").style.backgroundColor = "#40ff40";
+			document.getElementById("s_status").innerHTML =
+				" <b>websocket connection opened</b><br>" +
+				san(socket_di.extensions);
+		} 
+
+		socket_status.onmessage =function got_packet(msg) {
+			jso = JSON.parse(msg.data);
+			
+			document.getElementById("servinfo").innerHTML = 
+				"<table><tr><td class=l>Build info</td><td>"+
+					san(jso.version) + "</td></tr>" +
+					"<tr><td class=l>Server info</td><td>" +
+					san(jso.hostname) + "</td></tr>" +
+					"</table>";
+			s="<table>";
+			var n;
+			for (n = 0; n < jso.conns.length; n++)
+				s = s + "<tr><td class=l>client " + (n + 1) +
+				"</td><td><b>" + san(jso.conns[n].peer) +
+				"</b><br>" + san(jso.conns[n].time) +
+				"<br>" + san(jso.conns[n].ua) +
+				"</td></tr>";
+			s = s + "</table>";
+			
+			document.getElementById("conninfo").innerHTML = s;
+		} 
+
+		socket_status.onclose = function(){
+			document.getElementById("s_statustd").style.backgroundColor = "#ff4040";
+			document.getElementById("s_status").textContent = " websocket connection CLOSED ";
+		}
+	} catch(exception) {
+		alert('<p>Error' + exception);  
+	}
+
+function reset() {
+	socket_di.send("reset\n");
+}
+
+var socket_ot;
+
+function ot_open() {
+	if (typeof MozWebSocket != "undefined") {
+		socket_ot = new MozWebSocket(get_appropriate_ws_url(),
+				   "dumb-increment-protocol");
+	} else {
+		socket_ot = new WebSocket(get_appropriate_ws_url(),
+				   "dumb-increment-protocol");
+	}
+	try {
+		socket_ot.onopen = function() {
+			document.getElementById("ot_statustd").style.backgroundColor = "#40ff40";
+			document.getElementById("ot_status").innerHTML = " <b>websocket connection opened</b><br>" + san(socket_di.extensions);
+			document.getElementById("ot_open_btn").disabled = true;
+			document.getElementById("ot_close_btn").disabled = false;
+			document.getElementById("ot_req_close_btn").disabled = false;
+		} 
+
+		socket_ot.onclose = function(e){
+			document.getElementById("ot_statustd").style.backgroundColor = "#ff4040";
+			document.getElementById("ot_status").textContent = " websocket connection CLOSED, code: " + e.code +
+			", reason: " + e.reason;
+			document.getElementById("ot_open_btn").disabled = false;
+			document.getElementById("ot_close_btn").disabled = true;
+			document.getElementById("ot_req_close_btn").disabled = true;
+		}
+	} catch(exception) {
+		alert('<p>Error' + exception);  
+	}
+}
+
+/* browser will close the ws in a controlled way */
+function ot_close() {
+	socket_ot.close(3000, "Bye!");
+}
+
+/* we ask the server to close the ws in a controlled way */
+function ot_req_close() {
+	socket_ot.send("closeme\n");
+}
+
+/* lws-mirror protocol */
+
+	var down = 0;
+	var no_last = 1;
+	var last_x = 0, last_y = 0;
+	var ctx;
+	var socket_lm;
+	var color = "#000000";
+
+	if (typeof MozWebSocket != "undefined") {
+		socket_lm = new MozWebSocket(get_appropriate_ws_url(),
+				   "lws-mirror-protocol");
+	} else {
+		socket_lm = new WebSocket(get_appropriate_ws_url(),
+				   "lws-mirror-protocol");
+	}
+
+
+	try {
+		socket_lm.onopen = function() {
+			document.getElementById("wslm_statustd").style.backgroundColor = "#40ff40";
+			document.getElementById("wslm_status").innerHTML =
+				" <b>websocket connection opened</b><br>" +
+				san(socket_di.extensions);
+		} 
+
+		socket_lm.onmessage =function got_packet(msg) {
+			j = msg.data.split(';');
+			f = 0;
+			while (f < j.length - 1) {
+				i = j[f].split(' ');
+				if (i[0] == 'd') {
+					ctx.strokeStyle = i[1];
+					ctx.beginPath();
+					ctx.moveTo(+(i[2]), +(i[3]));
+					ctx.lineTo(+(i[4]), +(i[5]));
+					ctx.stroke();
+				}
+				if (i[0] == 'c') {
+					ctx.strokeStyle = i[1];
+					ctx.beginPath();
+					ctx.arc(+(i[2]), +(i[3]), +(i[4]), 0, Math.PI*2, true); 
+					ctx.stroke();
+				}
+
+				f++;
+			}
+		}
+
+		socket_lm.onclose = function(){
+			document.getElementById("wslm_statustd").style.backgroundColor = "#ff4040";
+			document.getElementById("wslm_status").textContent = " websocket connection CLOSED ";
+		}
+	} catch(exception) {
+		alert('<p>Error' + exception);  
+	}
+
+	var canvas = document.createElement('canvas');
+	canvas.height = 300;
+	canvas.width = 480;
+	ctx = canvas.getContext("2d");
+
+	document.getElementById('wslm_drawing').appendChild(canvas);
+
+	canvas.addEventListener('mousemove', ev_mousemove, false);
+	canvas.addEventListener('mousedown', ev_mousedown, false);
+	canvas.addEventListener('mouseup', ev_mouseup, false);
+
+	offsetX = offsetY = 0;
+	element = canvas;
+      if (element.offsetParent) {
+        do {
+          offsetX += element.offsetLeft;
+          offsetY += element.offsetTop;
+        } while ((element = element.offsetParent));
+      }
+ 
+function update_color() {
+	color = document.getElementById("color").value;
+}
+
+function ev_mousedown (ev) {
+	down = 1;
+}
+
+function ev_mouseup(ev) {
+	down = 0;
+	no_last = 1;
+}
+
+function ev_mousemove (ev) {
+	var x, y;
+
+	if (ev.offsetX) {
+		x = ev.offsetX;
+		y = ev.offsetY;
+	} else {
+		x = ev.layerX - offsetX;
+		y = ev.layerY - offsetY;
+
+	}
+
+	if (!down)
+		return;
+	if (no_last) {
+		no_last = 0;
+		last_x = x;
+		last_y = y;
+		return;
+	}
+	socket_lm.send("d " + color + " " + last_x + " " + last_y + " " + x + ' ' + y + ';');
+
+	last_x = x;
+	last_y = y;
+}
+
+
+</script>
+
+</body>
+</html>
