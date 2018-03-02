@@ -136,6 +136,10 @@ lws_context_init_ssl_library(struct lws_context_creation_info *info)
 	if (!lws_check_opt(info->options, LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT)) {
 //@UE4 BEGIN - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 		lwsl_notice(" SSL will not be initialized by libwebsockets: no LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT\n");
+		openssl_websocket_private_data_index =
+			SSL_get_ex_new_index(0, "lws", NULL, NULL, NULL);
+		openssl_SSL_CTX_private_data_index = SSL_CTX_get_ex_new_index(0,
+				NULL, NULL, NULL, NULL);
 //@UE4 END - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 		return 0;
 	}
@@ -246,7 +250,7 @@ lws_ssl_capable_read(struct lws *wsi, unsigned char *buf, int len)
 	n = SSL_read(wsi->ssl, buf, len);
 
 	/* manpage: returning 0 means connection shut down */
-	if (!n) {
+	if (!n || (n == -1 && errno == ENOTCONN)) {
   n = lws_ssl_get_error(wsi, n);
 
   if (n == SSL_ERROR_ZERO_RETURN)
