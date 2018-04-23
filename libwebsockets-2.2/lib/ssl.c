@@ -90,6 +90,8 @@ lws_ssl_elaborate_error(void)
 	}
 }
 
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 static int
 lws_context_init_ssl_pem_passwd_cb(char * buf, int size, int rwflag, void *userdata)
 {
@@ -101,6 +103,8 @@ lws_context_init_ssl_pem_passwd_cb(char * buf, int size, int rwflag, void *userd
 
 	return strlen(buf);
 }
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 
 void
 lws_ssl_bind_passphrase(SSL_CTX *ssl_ctx, struct lws_context_creation_info *info)
@@ -108,6 +112,8 @@ lws_ssl_bind_passphrase(SSL_CTX *ssl_ctx, struct lws_context_creation_info *info
 	if (!info->ssl_private_key_password)
 		return;
 
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 	/*
 	 * password provided, set ssl callback and user data
 	 * for checking password which will be trigered during
@@ -115,6 +121,8 @@ lws_ssl_bind_passphrase(SSL_CTX *ssl_ctx, struct lws_context_creation_info *info
 	 */
 	SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *)info);
 	SSL_CTX_set_default_passwd_cb(ssl_ctx, lws_context_init_ssl_pem_passwd_cb);
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 }
 
 int
@@ -129,10 +137,18 @@ lws_context_init_ssl_library(struct lws_context_creation_info *info)
 #else
 #if defined(LWS_USE_BORINGSSL)
 	lwsl_notice(" Compiled with BoringSSL support\n");
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#elif defined(USE_UNREAL_SSL)
+	lwsl_notice(" Compiled with Unreal Engine SSL support\n");
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #else
 	lwsl_notice(" Compiled with OpenSSL support\n");
 #endif
 #endif
+
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
+
 	if (!lws_check_opt(info->options, LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT)) {
 //@UE4 BEGIN - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 		lwsl_notice(" SSL will not be initialized by libwebsockets: no LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT\n");
@@ -159,6 +175,9 @@ lws_context_init_ssl_library(struct lws_context_creation_info *info)
 	openssl_SSL_CTX_private_data_index = SSL_CTX_get_ex_new_index(0,
 			NULL, NULL, NULL, NULL);
 
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
+
 	return 0;
 }
 
@@ -177,6 +196,8 @@ lws_ssl_destroy(struct lws_vhost *vhost)
 		return;
 //@UE4 END - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 // after 1.1.0 no need
 #if (OPENSSL_VERSION_NUMBER <  0x10100000)
 // <= 1.0.1f = old api, 1.0.1g+ = new api
@@ -195,6 +216,8 @@ lws_ssl_destroy(struct lws_vhost *vhost)
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 #endif
+#endif // !defined(USE_UNREAL_SSL)
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 }
 
 LWS_VISIBLE void
@@ -275,7 +298,13 @@ lws_ssl_capable_read(struct lws *wsi, unsigned char *buf, int len)
 	if (n < 0) {
 		n = lws_ssl_get_error(wsi, n);
 		lwsl_notice("get_ssl_err result %d\n", n);
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if defined(USE_UNREAL_SSL)
+		if (n == UNREAL_SSL_ERROR_WOULDBLOCK)
+#else
 		if (n ==  SSL_ERROR_WANT_READ || n ==  SSL_ERROR_WANT_WRITE)
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 			return LWS_SSL_CAPABLE_MORE_SERVICE;
 
 		lwsl_err("%s failed2: %s\n",__func__,
@@ -350,9 +379,15 @@ lws_ssl_capable_write(struct lws *wsi, unsigned char *buf, int len)
 		return n;
 
 	n = lws_ssl_get_error(wsi, n);
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if defined(USE_UNREAL_SSL)
+	if (n == UNREAL_SSL_ERROR_WOULDBLOCK) {
+#else
 	if (n == SSL_ERROR_WANT_READ || n == SSL_ERROR_WANT_WRITE) {
 		if (n == SSL_ERROR_WANT_WRITE)
 			lws_set_blocking_send(wsi);
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 		return LWS_SSL_CAPABLE_MORE_SERVICE;
 	}
 
@@ -378,14 +413,24 @@ lws_ssl_capable_write(struct lws *wsi, unsigned char *buf, int len)
 LWS_VISIBLE int
 lws_ssl_close(struct lws *wsi)
 {
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if !defined(USE_UNREAL_SSL)
 	int n;
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 
 	if (!wsi->ssl)
 		return 0; /* not handled */
 
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if !defined(USE_UNREAL_SSL)
 	n = SSL_get_fd(wsi->ssl);
 	SSL_shutdown(wsi->ssl);
 	compatible_close(n);
+#else
+	SSL_shutdown(wsi->ssl);
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 	SSL_free(wsi->ssl);
 	wsi->ssl = NULL;
 
@@ -401,9 +446,11 @@ lws_server_socket_service_ssl(struct lws *wsi, lws_sockfd_type accept_fd)
 	struct lws_context *context = wsi->context;
 	struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
 	int n, m;
-#if !defined(USE_WOLFSSL)
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_WOLFSSL) && !defined(USE_UNREAL_SSL)
 	BIO *bio;
 #endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
         char buf[256];
 
 	if (!LWS_SSL_ENABLED(wsi->vhost))
@@ -438,6 +485,9 @@ lws_server_socket_service_ssl(struct lws *wsi, lws_sockfd_type accept_fd)
 #else
 		wolfSSL_set_using_nonblock(wsi->ssl, 1);
 #endif
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#elif defined(USE_UNREAL_SSL)
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #else
 		SSL_set_mode(wsi->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 		bio = SSL_get_rbio(wsi->ssl);
@@ -606,7 +656,8 @@ lws_ssl_SSL_CTX_destroy(struct lws_vhost *vhost)
 void
 lws_ssl_context_destroy(struct lws_context *context)
 {
-
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 // after 1.1.0 no need
 #if (OPENSSL_VERSION_NUMBER <  0x10100000)
 // <= 1.0.1f = old api, 1.0.1g+ = new api
@@ -625,4 +676,6 @@ lws_ssl_context_destroy(struct lws_context *context)
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 #endif
+#endif // !defined(USE_UNREAL_SSL)
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 }

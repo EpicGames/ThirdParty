@@ -58,7 +58,11 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+//@UE4 BEGIN
+#if !defined(USE_SOCKETAPI_DISPATCH)
 #include "getifaddrs.h"
+#endif
+//@UE4 END
 
 static int
 getifaddrs2(struct ifaddrs **ifap, int af, int siocgifconf, int siocgifflags,

@@ -781,7 +781,7 @@ lws_service_fd_tsi(struct lws_context *context, struct lws_pollfd *pollfd, int t
 #if !defined(LWS_PLAT_OPTEE) && !defined(LWS_WITH_ESP32)
 #if LWS_POSIX && !defined(_WIN32)
 //@UE4 BEGIN - Changes for LWS_PLATFORM_EXTERNAL
-#if !defined(LWS_PLATFORM_EXTERNAL)
+#if !defined(LWS_PLATFORM_EXTERNAL) && !defined(USE_SOCKETAPI_DISPATCH)
 		if (context->deprecated && !context->count_wsi_allocated) {
 			lwsl_notice("%s: ending deprecated context\n", __func__);
 			kill(getpid(), SIGINT);

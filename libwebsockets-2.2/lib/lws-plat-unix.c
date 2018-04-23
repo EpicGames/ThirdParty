@@ -23,7 +23,13 @@ unsigned long long time_in_microseconds(void)
 LWS_VISIBLE int
 lws_get_random(struct lws_context *context, void *buf, int len)
 {
+//@UE4 BEGIN - Allow using the SSL api to get random numbers
+#if defined(USE_UNREAL_SSL)
+	return SSL_get_srand((char *)buf, len);
+#else
 	return read(context->fd_random, (char *)buf, len);
+#endif
+//@UE4 END - Allow using the SSL api to get random numbers
 }
 
 LWS_VISIBLE int
@@ -81,6 +87,9 @@ lws_cancel_service(struct lws_context *context)
 
 LWS_VISIBLE void lwsl_emit_syslog(int level, const char *line)
 {
+//@UE4 BEGIN - Allow skipping the syslog
+#if defined(USE_UNREAL_LOG)
+#else
 	int syslog_level = LOG_DEBUG;
 
 	switch (level) {
@@ -98,6 +107,8 @@ LWS_VISIBLE void lwsl_emit_syslog(int level, const char *line)
 		break;
 	}
 	syslog(syslog_level, "%s", line);
+#endif
+//@UE4 END - Allow skipping the syslog
 }
 
 LWS_VISIBLE LWS_EXTERN int
@@ -105,7 +116,11 @@ _lws_plat_service_tsi(struct lws_context *context, int timeout_ms, int tsi)
 {
 	struct lws_context_per_thread *pt;
 	int n = -1, m, c;
+//@UE4 BEGIN - Allow runtime selection of API functions.
+#if !defined(USE_SOCKETAPI_DISPATCH)
 	char buf;
+#endif
+//@UE4 END - Allow runtime selection of API functions.
 
 	/* stay dead once we are dead */
 
@@ -175,11 +190,15 @@ faked_service:
 
 		c--;
 
+//@UE4 BEGIN - Allow runtime selection of API functions.
+#if !defined(USE_SOCKETAPI_DISPATCH)
 		if (pt->fds[n].fd == pt->dummy_pipe_fds[0]) {
 			if (read(pt->fds[n].fd, &buf, 1) != 1)
 				lwsl_err("Cannot read from dummy pipe.");
 			continue;
 		}
+#endif
+//@UE4 END - Allow runtime selection of API functions.
 
 		m = lws_service_fd_tsi(context, &pt->fds[n], tsi);
 		if (m < 0)
@@ -279,6 +298,8 @@ lws_plat_set_socket_options(struct lws_vhost *vhost, int fd)
 LWS_VISIBLE void
 lws_plat_drop_app_privileges(struct lws_context_creation_info *info)
 {
+//@UE4 BEGIN - Allow skipping privilege drop
+#if !defined(LWS_KEEP_PRIVILEGES)
 	if (info->gid != -1)
 		if (setgid(info->gid))
 			lwsl_warn("setgid: %s\n", strerror(LWS_ERRNO));
@@ -295,6 +316,8 @@ lws_plat_drop_app_privileges(struct lws_context_creation_info *info)
 		} else
 			lwsl_warn("getpwuid: unable to find uid %d", info->uid);
 	}
+#endif
+//@UE4 END - Allow skipping privilege drop
 }
 
 #ifdef LWS_WITH_PLUGINS
@@ -454,7 +477,11 @@ sigabrt_handler(int x)
 LWS_VISIBLE int
 lws_plat_context_early_init(void)
 {
+//@UE4 BEGIN - Allow forwarding API functions to UE4.
+#if !defined(USE_SOCKETAPI_DISPATCH)
 	signal(SIGPIPE, SIG_IGN);
+#endif
+//@UE4 END - Allow forwarding API functions to UE4
 
 //	signal(SIGABRT, sigabrt_handler);
 
@@ -590,10 +617,14 @@ lws_plat_delete_socket_from_fds(struct lws_context *context,
 LWS_VISIBLE void
 lws_plat_service_periodic(struct lws_context *context)
 {
+//@UE4 BEGIN - Allow runtime selection of API functions.
+#if !defined(USE_SOCKETAPI_DISPATCH)
 	/* if our parent went down, don't linger around */
 	if (context->started_with_parent &&
 	    kill(context->started_with_parent, 0) < 0)
 		kill(getpid(), SIGTERM);
+#endif
+//@UE4 END - Allow runtime selection of API functions.
 }
 
 LWS_VISIBLE int
@@ -717,7 +748,13 @@ lws_plat_init(struct lws_context *context,
 	      struct lws_context_creation_info *info)
 {
 	struct lws_context_per_thread *pt = &context->pt[0];
+//@UE4 BEGIN - Allow using the SSL api to get random numbers
+#if defined(USE_UNREAL_SSL)
+	int n = context->count_threads;
+#else
 	int n = context->count_threads, fd;
+#endif
+//@UE4 END - Allow using the SSL api to get random numbers
 
 	/* master context has the global fd lookup array */
 	context->lws_lookup = lws_zalloc(sizeof(struct lws *) *
@@ -730,6 +767,8 @@ lws_plat_init(struct lws_context *context,
 
 	lwsl_notice(" mem: platform fd map: %5lu bytes\n",
 		    (unsigned long)(sizeof(struct lws *) * context->max_fds));
+//@UE4 BEGIN - Allow using the SSL api to get random numbers
+#if !defined(USE_UNREAL_SSL)
 	fd = open(SYSTEM_RANDOM_FILEPATH, O_RDONLY);
 
 	context->fd_random = fd;
@@ -738,16 +777,22 @@ lws_plat_init(struct lws_context *context,
 			 SYSTEM_RANDOM_FILEPATH, context->fd_random);
 		return 1;
 	}
+#endif
+//@UE4 END - Allow using the SSL api to get random numbers
 
 	if (!lws_libev_init_fd_table(context) &&
 	    !lws_libuv_init_fd_table(context)) {
 		/* otherwise libev handled it instead */
 
 		while (n--) {
+//@UE4 BEGIN - Allow runtime selection of API functions.
+#if !defined(USE_SOCKETAPI_DISPATCH)
 			if (pipe(pt->dummy_pipe_fds)) {
 				lwsl_err("Unable to create pipe\n");
 				return 1;
 			}
+#endif
+//@UE4 END - Allow runtime selection of API functions.
 
 			/* use the read end of pipe as first item */
 			pt->fds[0].fd = pt->dummy_pipe_fds[0];

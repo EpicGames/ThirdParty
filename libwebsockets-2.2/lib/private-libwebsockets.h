@@ -2098,6 +2098,18 @@ void lws_freeaddrinfo(struct lws_addrinfo *res);
 #endif //#if defined(USE_LWS_HOSTNAMERESOLVE)
 //@UE4 END - Changes for LWS_PLATFORM_EXTERNAL
 
+//@UE4 BEGIN - Changes for USE_SOCKETAPI_DISPATCH
+#if defined(USE_SOCKETAPI_DISPATCH)
+#include "unreal_socketapi.h"
+#endif
+//@UE4 END - Changes for USE_SOCKETAPI_DISPATCH
+
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if defined(USE_UNREAL_SSL)
+#include "unreal_ssl.h"
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
+
 #ifdef __cplusplus
 };
 #endif

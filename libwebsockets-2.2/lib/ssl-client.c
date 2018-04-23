@@ -30,6 +30,10 @@ lws_ssl_bind_passphrase(SSL_CTX *ssl_ctx, struct lws_context_creation_info *info
 extern int lws_ssl_get_error(struct lws *wsi, int n);
 
 #ifdef USE_WOLFSSL
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#elif defined(USE_UNREAL_SSL)
+// Epic SSL module will also perform verification
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #else
 
 static int
@@ -123,6 +127,8 @@ lws_ssl_client_bio_create(struct lws *wsi)
 		return -1;
 	}
 
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 #if defined LWS_HAVE_X509_VERIFY_PARAM_set1_host
 	X509_VERIFY_PARAM *param;
 	(void)param;
@@ -136,16 +142,26 @@ lws_ssl_client_bio_create(struct lws *wsi)
 	}
 
 #endif
+#endif // !defined(USE_UNREAL_SSL)
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 
 #ifndef USE_WOLFSSL
 #ifndef USE_OLD_CYASSL
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#ifndef USE_UNREAL_SSL
 	/* OpenSSL_client_verify_callback will be called @ SSL_connect() */
 	SSL_set_verify(wsi->ssl, SSL_VERIFY_PEER, OpenSSL_client_verify_callback);
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #endif
 #endif
 
 #ifndef USE_WOLFSSL
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#ifndef USE_UNREAL_SSL
 	SSL_set_mode(wsi->ssl,  SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #endif
 	/*
 	 * use server name indication (SNI), if supported,
@@ -161,6 +177,10 @@ lws_ssl_client_bio_create(struct lws *wsi)
 	wolfSSL_UseSNI(wsi->ssl, WOLFSSL_SNI_HOST_NAME, hostname, strlen(hostname));
 #endif
 #endif
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#elif defined(USE_UNREAL_SSL)
+	SSL_set_hostname(wsi->ssl, hostname, strlen(hostname));
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #else
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 	SSL_set_tlsext_host_name(wsi->ssl, hostname);
@@ -184,6 +204,10 @@ lws_ssl_client_bio_create(struct lws *wsi)
 #endif
 #endif /* USE_WOLFSSL */
 
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if defined(USE_UNREAL_SSL)
+	SSL_set_socketfd(wsi->ssl, wsi->desc.sockfd);
+#else
 	wsi->client_bio = BIO_new_socket(wsi->desc.sockfd, BIO_NOCLOSE);
 	SSL_set_bio(wsi->ssl, wsi->client_bio, wsi->client_bio);
 
@@ -199,6 +223,8 @@ lws_ssl_client_bio_create(struct lws *wsi)
 
 	SSL_set_ex_data(wsi->ssl, openssl_websocket_private_data_index,
 			wsi);
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 
 	return 0;
 }
@@ -217,12 +243,18 @@ lws_ssl_client_connect1(struct lws *wsi)
 	  "SSL_connect LWSCM_WSCL_ISSUE_HANDSHAKE", n, n > 0);
 
 	if (n < 0) {
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if defined(USE_UNREAL_SSL)
+		if (n == UNREAL_SSL_ERROR_WOULDBLOCK) {
+#else
 		n = lws_ssl_get_error(wsi, n);
 
 		if (n == SSL_ERROR_WANT_READ)
 			goto some_wait;
 
 		if (n == SSL_ERROR_WANT_WRITE) {
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 			/*
 			 * wants us to retry connect due to
 			 * state of the underlying ssl layer...
@@ -237,13 +269,19 @@ lws_ssl_client_connect1(struct lws *wsi)
 			 */
 			lwsl_info("%s: WANT_WRITE... retrying\n", __func__);
 			lws_callback_on_writable(wsi);
-some_wait:
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if !defined(USE_UNREAL_SSL)
+			some_wait:
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 			wsi->mode = LWSCM_WSCL_WAITING_SSL;
 
 			return 0; /* no error */
 		}
 
 		{
+//@UE4 BEGIN - Allow using Unreal's SSL Module
+#if !defined(USE_UNREAL_SSL)
 			struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
 			char *p = (char *)&pt->serv_buf[0];
 			char *sb = p;
@@ -251,6 +289,8 @@ some_wait:
 			lwsl_err("ssl hs1 error, X509_V_ERR = %d: %s\n",
 				 n, ERR_error_string(n, sb));
 			lws_ssl_elaborate_error();
+#endif
+//@UE4 END - Allow using Unreal's SSL Module
 		}
 
 		n = -1;
@@ -265,11 +305,16 @@ some_wait:
 		unsigned long error = ERR_get_error();
 
 		if (error != SSL_ERROR_NONE) {
+//@UE4 BEGIN - Allow using Unreal's SSL Module
+#if !defined(USE_UNREAL_SSL)
 			struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
+
 			char *p = (char *)&pt->serv_buf[0];
 			char *sb = p;
 			lwsl_err("SSL connect error %lu: %s\n",
 				error, ERR_error_string(error, sb));
+#endif
+//@UE4 END - Allow using Unreal's SSL Module
 			return -1;
 		}
 	}
@@ -281,9 +326,13 @@ int
 lws_ssl_client_connect2(struct lws *wsi)
 {
 	struct lws_context *context = wsi->context;
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if !defined(USE_UNREAL_SSL)
 	struct lws_context_per_thread *pt = &wsi->context->pt[(int)wsi->tsi];
 	char *p = (char *)&pt->serv_buf[0];
 	char *sb = p;
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 	int n = 0;
 
 	if (wsi->mode == LWSCM_WSCL_WAITING_SSL) {
@@ -295,6 +344,10 @@ lws_ssl_client_connect2(struct lws *wsi)
 			    "SSL_connect LWSCM_WSCL_WAITING_SSL", n, n > 0);
 
 		if (n < 0) {
+//@UE4 BEGIN - Changes for USE_UNREAL_SSL
+#if defined(USE_UNREAL_SSL)
+			if (n == UNREAL_SSL_ERROR_WOULDBLOCK) {
+#else
 			n = lws_ssl_get_error(wsi, n);
 
 			if (n == SSL_ERROR_WANT_READ) {
@@ -306,6 +359,8 @@ lws_ssl_client_connect2(struct lws *wsi)
 			}
 
 			if (n == SSL_ERROR_WANT_WRITE) {
+#endif
+//@UE4 END - Changes for USE_UNREAL_SSL
 				/*
 				 * wants us to retry connect due to
 				 * state of the underlying ssl layer...
@@ -344,6 +399,8 @@ lws_ssl_client_connect2(struct lws *wsi)
 	}
 
 #ifndef USE_WOLFSSL
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#ifndef USE_UNREAL_SSL
 	/*
 	 * See comment above about wolfSSL certificate
 	 * verification
@@ -373,6 +430,8 @@ lws_ssl_client_connect2(struct lws *wsi)
 		}
 	}
 
+#endif /* USE_UNREAL_SSL */
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 #endif /* USE_WOLFSSL */
 
 	return 1;
@@ -389,7 +448,11 @@ int lws_context_init_client_ssl(struct lws_context_creation_info *info,
 	const char *ca_filepath = info->ssl_ca_filepath;
 	const char *cert_filepath = info->ssl_cert_filepath;
 	const char *private_key_filepath = info->ssl_private_key_filepath;
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 	int n;
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 
 	/*
 	 *  for backwards-compatibility default to using ssl_... members, but
@@ -425,6 +488,8 @@ int lws_context_init_client_ssl(struct lws_context_creation_info *info,
 
 	/* basic openssl init already happened in context init */
 
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#ifndef USE_UNREAL_SSL
 	/* choose the most recent spin of the api */
 #if defined(LWS_HAVE_TLS_CLIENT_METHOD)
 	method = (SSL_METHOD *)TLS_client_method();
@@ -440,6 +505,9 @@ int lws_context_init_client_ssl(struct lws_context_creation_info *info,
 				      (char *)vhost->context->pt[0].serv_buf));
 		return 1;
 	}
+#endif /* USE_UNREAL_SSL */
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
+
 	/* create context */
 	vhost->ssl_client_ctx = SSL_CTX_new(method);
 	if (!vhost->ssl_client_ctx) {
@@ -449,6 +517,9 @@ int lws_context_init_client_ssl(struct lws_context_creation_info *info,
 				      (char *)vhost->context->pt[0].serv_buf));
 		return 1;
 	}
+
+//@UE4 BEGIN - Allow using the UE4 SSL Module to support platform runtime SSL selection
+#if !defined(USE_UNREAL_SSL)
 
 #ifdef SSL_OP_NO_COMPRESSION
 	SSL_CTX_set_options(vhost->ssl_client_ctx, SSL_OP_NO_COMPRESSION);
@@ -525,6 +596,9 @@ int lws_context_init_client_ssl(struct lws_context_creation_info *info,
 			return 1;
 		}
 	}
+
+#endif
+//@UE4 END - Allow using the UE4 SSL Module to support platform runtime SSL selection
 
 	/*
 	 * give him a fake wsi with context set, so he can use
