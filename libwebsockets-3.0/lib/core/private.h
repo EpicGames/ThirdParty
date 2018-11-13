@@ -1080,6 +1080,10 @@ struct lws {
 #endif
 
 	lws_sock_file_fd_type desc; /* .filefd / .sockfd */
+//@UE4 BEGIN - connect using getaddrinfo results
+	struct addrinfo *gai_results;
+	struct addrinfo *ai;
+//@UE4 END - connect using getaddrinfo results
 #if defined(LWS_WITH_STATS)
 	uint64_t active_writable_req_us;
 #if defined(LWS_WITH_TLS)

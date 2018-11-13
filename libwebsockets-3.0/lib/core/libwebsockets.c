@@ -556,6 +556,14 @@ __lws_close_free_wsi(struct lws *wsi, enum lws_close_status reason, const char *
 	if (!wsi)
 		return;
 
+//@UE4 BEGIN - connect using getaddrinfo results
+	if (wsi->gai_results) {
+		freeaddrinfo(wsi->gai_results);
+		wsi->gai_results = NULL;
+		wsi->ai = NULL;
+	}
+//@UE4 END - connect using getaddrinfo results
+
 	lws_access_log(wsi);
 
 	context = wsi->context;

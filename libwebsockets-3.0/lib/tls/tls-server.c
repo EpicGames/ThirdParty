@@ -101,12 +101,16 @@ lws_context_init_server_ssl(const struct lws_context_creation_info *info,
 	struct lws_context *context = vhost->context;
 	struct lws wsi;
 
+//@UE4 BEGIN - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
+#if 0
 	if (!lws_check_opt(info->options,
 			   LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT)) {
 		vhost->tls.use_ssl = 0;
 
 		return 0;
 	}
+#endif
+//@UE4 END - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 
 	/*
 	 * If he is giving a cert filepath, take it as a sign he wants to use

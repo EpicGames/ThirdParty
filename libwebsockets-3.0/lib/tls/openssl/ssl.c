@@ -134,8 +134,14 @@ lws_context_init_ssl_library(const struct lws_context_creation_info *info)
 #endif
 #endif
 	if (!lws_check_opt(info->options, LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT)) {
-		lwsl_info(" SSL disabled: no LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT\n");
-		return 0;
+//@UE4 BEGIN - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
+		lwsl_notice(" SSL will not be initialized by libwebsockets: no LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT\n");
+		openssl_websocket_private_data_index =
+			SSL_get_ex_new_index(0, "lws", NULL, NULL, NULL);
+
+		openssl_SSL_CTX_private_data_index = SSL_CTX_get_ex_new_index(0,
+			NULL, NULL, NULL, NULL);
+//@UE4 END - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 	}
 
 	/* basic openssl init */
@@ -162,14 +168,16 @@ lws_context_init_ssl_library(const struct lws_context_creation_info *info)
 LWS_VISIBLE void
 lws_ssl_destroy(struct lws_vhost *vhost)
 {
-	if (!lws_check_opt(vhost->context->options,
-			   LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT))
-		return;
-
+//@UE4 BEGIN - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 	if (vhost->tls.ssl_ctx)
 		SSL_CTX_free(vhost->tls.ssl_ctx);
 	if (!vhost->tls.user_supplied_ssl_ctx && vhost->tls.ssl_client_ctx)
 		SSL_CTX_free(vhost->tls.ssl_client_ctx);
+
+	if (!lws_check_opt(vhost->context->options,
+			   LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT))
+		return;
+//@UE4 END - Still use SSL even when LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT is not set (let caller initialize OpenSSL)
 
 // after 1.1.0 no need
 #if (OPENSSL_VERSION_NUMBER <  0x10100000)
