@@ -429,6 +429,7 @@ lws_ssl_close(struct lws *wsi)
 	compatible_close(n);
 #else
 	SSL_shutdown(wsi->ssl);
+	compatible_close(wsi->desc.sockfd);
 #endif
 //@UE4 END - Changes for USE_UNREAL_SSL
 	SSL_free(wsi->ssl);

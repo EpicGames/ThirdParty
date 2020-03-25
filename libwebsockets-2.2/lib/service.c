@@ -420,9 +420,9 @@ lws_service_timeout_check(struct lws *wsi, unsigned int sec)
 		/* no need to log normal idle keepalive timeout */
 		if (wsi->pending_timeout != PENDING_TIMEOUT_HTTP_KEEPALIVE_IDLE)
 			lwsl_notice("wsi %p: TIMEDOUT WAITING on %d (did hdr %d, ah %p, wl %d, pfd events %d) %llu vs %llu\n",
-			    (void *)wsi, wsi->pending_timeout,
-			    wsi->hdr_parsing_completed, wsi->u.hdr.ah,
-			    pt->ah_wait_list_length, n, (unsigned long long)sec, (unsigned long long)wsi->pending_timeout_limit);
+				(void *)wsi, wsi->pending_timeout,
+				wsi->hdr_parsing_completed, wsi->u.hdr.ah,
+				pt->ah_wait_list_length, n, (unsigned long long)sec, (unsigned long long)wsi->pending_timeout_limit);
 //#endif
 		/*
 		 * Since he failed a timeout, he already had a chance to do
@@ -762,7 +762,7 @@ lws_service_fd_tsi(struct lws_context *context, struct lws_pollfd *pollfd, int t
 	if (!context->protocol_init_done)
 		lws_protocol_init(context);
 
-	time(&now);
+	now = time(NULL);
 
 	/*
 	 * handle case that system time was uninitialized when lws started

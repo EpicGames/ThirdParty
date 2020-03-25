@@ -428,9 +428,11 @@ endif()
 
 # Put the libraries and binaries that get built into directories at the
 # top of the build tree rather than in hard-to-find leaf directories. 
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
-SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
-SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+if (NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+	SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+	SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+	SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
+endif()
 
 SET(LWS_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}")
 
@@ -607,8 +609,13 @@ else()
 					lib/lws-plat-esp32.c
 					lib/romfs.c)
 			else()
-				list(APPEND SOURCES
-					lib/lws-plat-unix.c)
+				if (LWS_PLATFORM_EXTERNAL)
+					list(APPEND SOURCES
+						lib/lws-plat-external.c)
+				else()
+					list(APPEND SOURCES
+						lib/lws-plat-unix.c)
+				endif()
 			endif()
 		endif()
 	endif()

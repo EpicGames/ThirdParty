@@ -121,7 +121,7 @@ lws_set_timeout(struct lws *wsi, enum pending_timeout reason, int secs)
 
 	lws_pt_lock(pt);
 
-	time(&now);
+	now = time(NULL);
 
 	if (reason && !wsi->timeout_list_prev) {
 		/* our next guy is current first guy */

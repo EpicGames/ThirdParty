@@ -193,7 +193,7 @@ reset:
 	wsi->u.hdr.ah->rxlen = 0;
 
 	lws_header_table_reset(wsi, autoservice);
-	time(&wsi->u.hdr.ah->assigned);
+	wsi->u.hdr.ah->assigned = time(NULL);
 
 #ifndef LWS_NO_CLIENT
 	if (wsi->state == LWSS_CLIENT_UNCONNECTED)
@@ -256,7 +256,7 @@ int lws_header_table_detach(struct lws *wsi, int autoservice)
 		goto bail;
 	}
 	/* we did have an ah attached */
-	time(&now);
+	now = time(NULL);
 	if (ah->assigned && now - ah->assigned > 3) {
 		/*
 		 * we're detaching the ah, but it was held an
@@ -302,7 +302,7 @@ int lws_header_table_detach(struct lws *wsi, int autoservice)
 	ah->rxpos = 0;
 	ah->rxlen = 0;
 	lws_header_table_reset(wsi, autoservice);
-	time(&wsi->u.hdr.ah->assigned);
+	wsi->u.hdr.ah->assigned = time(NULL);
 
 	/* clients acquire the ah and then insert themselves in fds table... */
 	if (wsi->position_in_fds_table != -1) {

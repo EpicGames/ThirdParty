@@ -311,11 +311,6 @@ lws_plat_get_peer_simple(struct lws *wsi, char *name, int namelen);
 
 #include "libwebsockets.h"
 #if defined(WIN32) || defined(_WIN32)
-#else
-static inline int compatible_close(int fd) { return close(fd); }
-#endif
-
-#if defined(WIN32) || defined(_WIN32)
 #include <gettimeofday.h>
 #endif
 
@@ -2101,6 +2096,12 @@ void lws_freeaddrinfo(struct lws_addrinfo *res);
 //@UE4 BEGIN - Changes for USE_SOCKETAPI_DISPATCH
 #if defined(USE_SOCKETAPI_DISPATCH)
 #include "unreal_socketapi.h"
+#endif
+
+// moved from above so that this uses the close define from unreal_socketapi.h
+#if defined(WIN32) || defined(_WIN32)
+#else
+static inline int compatible_close(int fd) { return close(fd); }
 #endif
 //@UE4 END - Changes for USE_SOCKETAPI_DISPATCH
 

@@ -154,7 +154,7 @@ static const char emit_syslog_string_info[] = "LOG_INFO";
 #endif
 LWS_VISIBLE void lwsl_emit_syslog(int level, const char *line)
 {
-#if _DEBUG
+#if defined(_DEBUG)
 	const char* syslog_level = emit_syslog_string_debug;
 
 	switch (level) {

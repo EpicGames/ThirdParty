@@ -110,7 +110,7 @@ struct sockaddr_in;
 
 #include <net.h>
 #include <unistd.h>
-#define getdtablesize() OPEN_MAX
+#define getdtablesize() 256
 
 #define LWS_INLINE __inline
 #define LWS_VISIBLE __attribute__((visibility("default")))
@@ -773,7 +773,8 @@ enum lws_callback_reasons {
 	 *     	"HS: disallowed by client filter"
 	 *     	"HS: disallowed at ESTABLISHED"
 	 *     	"HS: ACCEPT missing"
-	 *     	"HS: ws upgrade response not 101"
+	 *     	"HS: ws upgrade response not 101, was <http response code>"
+     *      "HS: ws upgrade forbidden"
 	 *     	"HS: UPGRADE missing"
 	 *     	"HS: Upgrade to something other than websocket"
 	 *     	"HS: CONNECTION missing"

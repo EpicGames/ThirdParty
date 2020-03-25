@@ -414,6 +414,7 @@ lws_client_interpret_server_handshake(struct lws *wsi)
 	struct allocated_headers *ah = NULL;
 	char *p, *q;
 	char new_path[300];
+	char error_string[256];
 #ifndef LWS_NO_EXTENSIONS
 	struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
 	char *sb = (char *)&pt->serv_buf[0];
@@ -635,10 +636,27 @@ lws_client_interpret_server_handshake(struct lws *wsi)
 		goto bail3;
 	}
 
+	if (p && strncmp(p, "401", 3) == 0) {
+		lwsl_warn(
+			"lws_client_handshake: got bad HTTP response '%s'\n", p);
+		cce = "HS: ws upgrade unauthorized";
+		goto bail3;
+	}
+
+	if (p && strncmp(p, "403", 3) == 0) {
+		lwsl_warn(
+			"lws_client_handshake: got bad HTTP response '%s'\n", p);
+		cce = "HS: ws upgrade forbidden";
+		goto bail3;
+	}
+
 	if (p && strncmp(p, "101", 3)) {
 		lwsl_warn(
 		       "lws_client_handshake: got bad HTTP response '%s'\n", p);
-		cce = "HS: ws upgrade response not 101";
+		snprintf(error_string, sizeof(error_string) - 1, "HS: ws upgrade not 101, was %s", p);
+		error_string[sizeof(error_string)-1] = 0;
+		cce = error_string;
+		//cce = "HS: ws upgrade response not 101";
 		goto bail3;
 	}
 

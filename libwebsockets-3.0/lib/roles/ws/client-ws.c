@@ -207,6 +207,7 @@ lws_client_ws_upgrade(struct lws *wsi, const char **cce)
 	struct lws_context *context = wsi->context;
 	const char *pc;
 	char *p;
+	static char error_string[256];
 #if !defined(LWS_WITHOUT_EXTENSIONS)
 	struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
 	char *sb = (char *)&pt->serv_buf[0];
@@ -233,11 +234,22 @@ lws_client_ws_upgrade(struct lws *wsi, const char **cce)
 		goto bail3;
 	}
 
+	if (wsi->http.ah->http_response == 403) {
+		lwsl_warn(
+			"lws_client_handshake: got bad HTTP response '%d'\n",
+			wsi->http.ah->http_response);
+		*cce = "HS: ws upgrade forbidden";
+		goto bail3;
+	}
+
 	if (wsi->http.ah->http_response != 101) {
 		lwsl_warn(
 		       "lws_client_handshake: got bad HTTP response '%d'\n",
 		       wsi->http.ah->http_response);
-		*cce = "HS: ws upgrade response not 101";
+		snprintf(error_string, sizeof(error_string) - 1, "HS: ws upgrade not 101, was %u", wsi->http.ah->http_response);
+		error_string[sizeof(error_string)-1] = 0;
+		*cce = error_string;
+		//*cce = "HS: ws upgrade response not 101";
 		goto bail3;
 	}
 
