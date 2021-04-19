@@ -597,6 +597,13 @@ lws_client_reset(struct lws **pwsi, int ssl, const char *address, int port,
 	}
 #endif
 
+//@UE4 BEGIN - connect using getaddrinfo results
+	if (wsi->gai_results) {
+		freeaddrinfo(wsi->gai_results);
+		wsi->gai_results = NULL;
+	}
+//@UE4 END - connect using getaddrinfo results
+
 	wsi->desc.sockfd = LWS_SOCK_INVALID;
 	lwsi_set_state(wsi, LRS_UNCONNECTED);
 	wsi->protocol = NULL;
