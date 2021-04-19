@@ -1,4 +1,4 @@
-// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #ifdef __cplusplus
 extern "C" 
@@ -41,6 +41,8 @@ struct FSocketAPIDispatchTable
 extern struct FSocketAPIDispatchTable* GSocketAPIDispatchTable;
 extern void unreal_set_socketapi_table(struct FSocketAPIDispatchTable*);
 
+#if !defined(UNREALSOCKET_NO_API_DEFINES)
+
 #define shutdown(...) DISPATCH_FUNCTION(GSocketAPIDispatchTable, shutdown)(__VA_ARGS__)
 #define recv(...) DISPATCH_FUNCTION(GSocketAPIDispatchTable, recv)(__VA_ARGS__)
 #define close(...) DISPATCH_FUNCTION(GSocketAPIDispatchTable, close)(__VA_ARGS__)
@@ -65,6 +67,8 @@ extern void unreal_set_socketapi_table(struct FSocketAPIDispatchTable*);
 #define select(...) DISPATCH_FUNCTION(GSocketAPIDispatchTable, select)(__VA_ARGS__)
 #define ioctl(...) DISPATCH_FUNCTION(GSocketAPIDispatchTable, ioctl)(__VA_ARGS__)
 #define getdtablesize() FOPEN_MAX
+
+#endif
 
 #endif
 

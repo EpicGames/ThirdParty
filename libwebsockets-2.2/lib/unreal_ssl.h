@@ -1,4 +1,4 @@
-// Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #ifdef __cplusplus
 extern "C" 
@@ -31,6 +31,8 @@ struct FUnrealSSLDispatchTable
 extern struct FUnrealSSLDispatchTable* GUnrealSSLDispatchTable;
 extern void unreal_set_unreal_ssl_table(struct FUnrealSSLDispatchTable*);
 
+#if !defined(UNREALSSL_NO_API_DEFINES)
+
 #define SSL_CTX_new DISPATCH_FUNCTION(GUnrealSSLDispatchTable, ctx_new)
 #define SSL_CTX_free DISPATCH_FUNCTION(GUnrealSSLDispatchTable, ctx_free)
 #define SSL_new DISPATCH_FUNCTION(GUnrealSSLDispatchTable, new)
@@ -47,6 +49,9 @@ extern void unreal_set_unreal_ssl_table(struct FUnrealSSLDispatchTable*);
 #define ERR_get_error(...) 0
 #define ERR_error_string_n(...)
 #define ERR_error_string(...) ""
+
+#endif
+
 #define UNREAL_SSL_ERROR_WOULDBLOCK -2
 
 #endif
