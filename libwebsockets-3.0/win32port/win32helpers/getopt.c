@@ -92,7 +92,7 @@ getopt(nargc, nargv, ostr)
 	static char *__progname = 0;
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
-        __progname = __progname?__progname:_progname(*nargv);
+        __progname = nargv ? _progname(*nargv) : __progname;
 
 	_DIAGASSERT(nargv != NULL);
 	_DIAGASSERT(ostr != NULL);
