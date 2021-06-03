@@ -151,7 +151,7 @@ void ZLIB_INTERNAL zmemcpy(dest, source, len)
     const Bytef* source;
     uInt  len;
 {
-    if (len == 0) return;
+    if (len == 0 || !dest || !source) return;
     do {
         *dest++ = *source++; /* ??? to be unrolled */
     } while (--len != 0);
@@ -162,6 +162,7 @@ int ZLIB_INTERNAL zmemcmp(s1, s2, len)
     const Bytef* s2;
     uInt  len;
 {
+    if (len == 0 || !s1 || !s2) return 0;
     uInt j;
 
     for (j = 0; j < len; j++) {
@@ -174,7 +175,7 @@ void ZLIB_INTERNAL zmemzero(dest, len)
     Bytef* dest;
     uInt  len;
 {
-    if (len == 0) return;
+    if (len == 0 || !dest) return;
     do {
         *dest++ = 0;  /* ??? to be unrolled */
     } while (--len != 0);
