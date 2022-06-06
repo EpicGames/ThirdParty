@@ -7,7 +7,7 @@ libtool
 stamp-h1
 output/
 win32port/ipch/
-win32port/Debug*/
+win32port/Debug*/ds
 win32port/Release*/
 win32port/server/Debug*/
 win32port/server/Release*/
